@@ -1,6 +1,6 @@
 #pragma once
 
-#include "dfa.hpp"
+#include "dfa/dfa.hpp"
 #include "nfa/nfa.hpp"
 
 namespace nre::dfa {

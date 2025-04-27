@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include "nfa.hpp"
+#include "nfa/nfa.hpp"
 #include "token/token.hpp"
 
 namespace nre::nfa {

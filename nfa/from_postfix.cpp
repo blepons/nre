@@ -1,6 +1,6 @@
 #include "from_postfix.hpp"
 #include <stack>
-#include "nfa.hpp"
+#include "nfa/nfa.hpp"
 
 namespace nre::nfa {
 

@@ -1,4 +1,5 @@
 #pragma once
+
 #include <stack>
 #include <vector>
 #include "token/token.hpp"
