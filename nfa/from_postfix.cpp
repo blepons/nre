@@ -1,5 +1,6 @@
 #include "from_postfix.hpp"
 #include <stack>
+#include <unordered_map>
 #include "nfa/nfa.hpp"
 
 namespace nre::nfa {
@@ -109,7 +110,47 @@ void handle_positive_closure(NFA& nfa, std::stack<Fragment>& frag_stack) {
     frag_stack.push(Fragment{new_start, new_end});
 }
 
-// BUG: fragments should be deep copied
+Fragment clone_fragment(NFA& nfa, const Fragment& original) {
+    std::unordered_set<StateID> original_states;
+    std::queue<StateID> to_visit;
+    to_visit.push(original.start);
+    original_states.insert(original.start);
+
+    while (!to_visit.empty()) {
+        StateID current = to_visit.front();
+        to_visit.pop();
+
+        for (const auto& trans : nfa.states[current]) {
+            if (original_states.find(trans.target) == original_states.end()) {
+                original_states.insert(trans.target);
+                to_visit.push(trans.target);
+            }
+        }
+    }
+
+    std::unordered_map<StateID, StateID> state_map;
+    for (StateID s : original_states) {
+        state_map[s] = nfa.create_state();
+    }
+
+    for (StateID original_s : original_states) {
+        StateID new_s = state_map[original_s];
+        for (const auto& trans : nfa.states[original_s]) {
+            TransitionCondition cond = trans.condition;
+            StateID original_target = trans.target;
+
+            StateID new_target = original_target;
+            if (original_states.count(original_target)) {
+                new_target = state_map[original_target];
+            }
+
+            nfa.add_transition(new_s, cond, new_target);
+        }
+    }
+
+    return Fragment{state_map[original.start], state_map[original.end]};
+}
+
 void handle_repetition_range(NFA& nfa,
                              std::stack<Fragment>& frag_stack,
                              const RepetitionRange& tok) {
@@ -121,9 +162,9 @@ void handle_repetition_range(NFA& nfa,
 
     Fragment current;
     if (tok.min > 0) {
-        current = inner;
+        current = clone_fragment(nfa, inner);
         for (uint32_t i = 1; i < tok.min; ++i) {
-            Fragment copy = inner;  // should do a deep copy instead
+            Fragment copy = clone_fragment(nfa, inner);
             nfa.add_transition(current.end, EpsilonTransition{}, copy.start);
             current.end = copy.end;
         }
@@ -134,24 +175,27 @@ void handle_repetition_range(NFA& nfa,
     if (tok.max.has_value()) {
         const uint32_t remaining = *tok.max - tok.min;
         for (uint32_t i = 0; i < remaining; ++i) {
+            Fragment copy = clone_fragment(nfa, inner);
             auto branch_start = nfa.create_state();
             auto branch_end = nfa.create_state();
 
             nfa.add_transition(current.end, EpsilonTransition{}, branch_start);
-            nfa.add_transition(branch_start, EpsilonTransition{}, inner.start);
-            nfa.add_transition(inner.end, EpsilonTransition{}, branch_end);
+            nfa.add_transition(branch_start, EpsilonTransition{}, copy.start);
+            nfa.add_transition(copy.end, EpsilonTransition{}, branch_end);
             nfa.add_transition(branch_start, EpsilonTransition{}, branch_end);
 
             current.end = branch_end;
         }
     } else {
+        Fragment star_fragment = clone_fragment(nfa, inner);
         auto star_start = nfa.create_state();
         auto star_end = nfa.create_state();
 
-        nfa.add_transition(star_start, EpsilonTransition{}, inner.start);
-        nfa.add_transition(inner.end, EpsilonTransition{}, star_start);
+        nfa.add_transition(star_start, EpsilonTransition{},
+                           star_fragment.start);
+        nfa.add_transition(star_fragment.end, EpsilonTransition{}, star_start);
         nfa.add_transition(star_start, EpsilonTransition{}, star_end);
-        nfa.add_transition(inner.end, EpsilonTransition{}, star_end);
+        nfa.add_transition(star_fragment.end, EpsilonTransition{}, star_end);
 
         nfa.add_transition(current.end, EpsilonTransition{}, star_start);
         current.end = star_end;
