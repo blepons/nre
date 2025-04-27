@@ -32,10 +32,10 @@ void handle_empty_string(NFA& nfa, std::stack<Fragment>& frag_stack) {
 
 void handle_character_class(NFA& nfa,
                             std::stack<Fragment>& frag_stack,
-                            const CharacterClass& range) {
+                            const CharacterClass& tok) {
     const auto start = nfa.create_state();
     const auto end = nfa.create_state();
-    for (char ch : range.chars) {
+    for (char ch : tok.chars) {
         nfa.add_transition(start, ch, end);
     }
     frag_stack.push(Fragment{start, end});
@@ -112,7 +112,7 @@ void handle_positive_closure(NFA& nfa, std::stack<Fragment>& frag_stack) {
 // BUG: fragments should be deep copied
 void handle_repetition_range(NFA& nfa,
                              std::stack<Fragment>& frag_stack,
-                             const RepetitionRange& range) {
+                             const RepetitionRange& tok) {
     if (frag_stack.empty()) {
         throw BuildError("Missing operand for repetition range");
     }
@@ -120,9 +120,9 @@ void handle_repetition_range(NFA& nfa,
     frag_stack.pop();
 
     Fragment current;
-    if (range.min > 0) {
+    if (tok.min > 0) {
         current = inner;
-        for (uint32_t i = 1; i < range.min; ++i) {
+        for (uint32_t i = 1; i < tok.min; ++i) {
             Fragment copy = inner;  // should do a deep copy instead
             nfa.add_transition(current.end, EpsilonTransition{}, copy.start);
             current.end = copy.end;
@@ -131,8 +131,8 @@ void handle_repetition_range(NFA& nfa,
         current.start = current.end = nfa.create_state();
     }
 
-    if (range.max.has_value()) {
-        const uint32_t remaining = *range.max - range.min;
+    if (tok.max.has_value()) {
+        const uint32_t remaining = *tok.max - tok.min;
         for (uint32_t i = 0; i < remaining; ++i) {
             auto branch_start = nfa.create_state();
             auto branch_end = nfa.create_state();
