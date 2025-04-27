@@ -25,9 +25,10 @@ public:
 
 DFA intersect(const DFA& a, const DFA& b);
 
+DFA minimize(const DFA& automaton);
+
 // TODO: implement these functions:
 //
-// DFA minimize(const DFA& automaton);
 // DFA invert(const DFA& automaton);
 // std::string to_regex(const DFA& automaton);
 
