@@ -41,7 +41,6 @@ DFA intersect(const DFA& a, const DFA& b) {
     }
 
     const auto dead_state = product.create_state();
-    product.set_accepting(dead_state, false);
     for (char c : combined_alphabet) {
         product.add_transition(dead_state, c, dead_state);
     }
