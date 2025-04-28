@@ -154,9 +154,8 @@ std::optional<Captures> NFAMatcher::captures(std::string_view str) const {
     current_states =
         epsilon_closure_with_groups(nfa_, std::move(current_states), 0);
 
-    for (std::size_t pos = 0; pos < str.size(); ++pos) {
+    for (auto [pos, c] : std::views::enumerate(str)) {
         std::unordered_set<SimulationState, SimulationStateHash> next_states;
-        const char c = str[pos];
 
         for (const auto& state : current_states) {
             for (const auto& trans : nfa_.states[state.id]) {
