@@ -74,7 +74,7 @@ DFA intersect(const DFA& a, const DFA& b) {
             } else {
                 const auto next_pair =
                     std::make_pair(a_trans.at(c), b_trans.at(c));
-                if (!state_map.count(next_pair)) {
+                if (!state_map.contains(next_pair)) {
                     state_map[next_pair] = product.create_state();
                     process_queue.push(next_pair);
                 }

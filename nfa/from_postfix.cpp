@@ -140,7 +140,7 @@ Fragment clone_fragment(NFA& nfa, const Fragment& original) {
             StateID original_target = trans.target;
 
             StateID new_target = original_target;
-            if (original_states.count(original_target)) {
+            if (original_states.contains(original_target)) {
                 new_target = state_map[original_target];
             }
 
