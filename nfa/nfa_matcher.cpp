@@ -30,11 +30,11 @@ Captures::const_iterator Captures::end() const {
 
 NFAMatcher::NFAMatcher(NFA&& nfa) : nfa_(std::move(nfa)) {}
 
-bool NFAMatcher::is_match(std::string_view input) const {
+bool NFAMatcher::is_match(std::string_view str) const {
     auto current = epsilon_closure<std::unordered_set>(
         nfa_, std::views::single(nfa_.start_state));
 
-    for (char c : input) {
+    for (char c : str) {
         std::unordered_set<StateID> next_states;
 
         for (auto state : current) {
@@ -148,15 +148,15 @@ epsilon_closure_with_groups(
 
 }  // namespace
 
-std::optional<Captures> NFAMatcher::captures(std::string_view input) const {
+std::optional<Captures> NFAMatcher::captures(std::string_view str) const {
     std::unordered_set<SimulationState, SimulationStateHash> current_states{
         SimulationState{nfa_.start_state, {}, {}}};
     current_states =
         epsilon_closure_with_groups(nfa_, std::move(current_states), 0);
 
-    for (std::size_t pos = 0; pos < input.size(); ++pos) {
+    for (std::size_t pos = 0; pos < str.size(); ++pos) {
         std::unordered_set<SimulationState, SimulationStateHash> next_states;
-        const char c = input[pos];
+        const char c = str[pos];
 
         for (const auto& state : current_states) {
             for (const auto& trans : nfa_.states[state.id]) {
@@ -199,9 +199,9 @@ std::optional<Captures> NFAMatcher::captures(std::string_view input) const {
     std::vector<std::string_view> captures;
 
     captures.resize(max_group + 1);
-    captures[0] = input;
+    captures[0] = str;
     for (const auto& [gid, pos] : best->completed_groups) {
-        captures[gid] = input.substr(pos.start, pos.end - pos.start + 1);
+        captures[gid] = str.substr(pos.start, pos.end - pos.start + 1);
     }
 
     return Captures(std::move(captures));

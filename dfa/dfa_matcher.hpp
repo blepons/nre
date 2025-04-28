@@ -9,7 +9,7 @@ class DFAMatcher {
 public:
     DFAMatcher(DFA&& dfa);
 
-    bool is_match(std::string_view input) const;
+    bool is_match(std::string_view str) const;
 
     DFA extract() &&;
 

@@ -4,9 +4,9 @@ namespace nre::dfa {
 
 DFAMatcher::DFAMatcher(DFA&& dfa) : dfa_(std::move(dfa)) {}
 
-bool DFAMatcher::is_match(std::string_view input) const {
+bool DFAMatcher::is_match(std::string_view str) const {
     auto current = dfa_.start_state;
-    for (char c : input) {
+    for (char c : str) {
         const auto& transitions = dfa_.states[current];
         if (auto it = transitions.find(c); it != transitions.end()) {
             current = it->second;
