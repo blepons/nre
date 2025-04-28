@@ -3,6 +3,8 @@
 #include <map>
 #include <queue>
 #include <ranges>
+#include <set>
+#include <unordered_set>
 #include <utility>
 
 namespace nre::dfa {
@@ -230,6 +232,77 @@ DFA minimize(const DFA& automaton) {
     DFA completed = complete(automaton, alphabet);
     auto partition = compute_partitions(completed, alphabet);
     return build_minimal_dfa(completed, partition, alphabet);
+}
+
+DFA reverse(const DFA& automaton) {
+    DFA reversed_dfa;
+
+    std::unordered_map<char, std::unordered_map<StateID, std::set<StateID>>>
+        reverse_trans;
+    for (auto [q, transitions] : std::views::enumerate(automaton.states)) {
+        for (const auto& [ch, state] : transitions) {
+            reverse_trans[ch][state].insert(q);
+        }
+    }
+
+    auto alphabet = collect_alphabet(automaton);
+
+    std::set<StateID> initial_state(automaton.accept_states.begin(),
+                                    automaton.accept_states.end());
+
+    if (initial_state.empty()) {
+        reversed_dfa.create_state();
+        reversed_dfa.start_state = 0;
+        return reversed_dfa;
+    }
+
+    std::map<std::set<StateID>, StateID> state_map;
+    std::queue<std::set<StateID>> processing_queue;
+
+    const auto initial_id = reversed_dfa.create_state();
+    state_map[initial_state] = initial_id;
+    reversed_dfa.start_state = initial_id;
+    processing_queue.push(initial_state);
+
+    if (initial_state.contains(automaton.start_state)) {
+        reversed_dfa.set_accepting(initial_id, true);
+    }
+
+    while (!processing_queue.empty()) {
+        auto current_set = std::move(processing_queue.front());
+        processing_queue.pop();
+        const StateID current_id = state_map[current_set];
+
+        for (char c : alphabet) {
+            std::set<StateID> next_set;
+
+            if (reverse_trans.contains(c)) {
+                const auto& char_trans = reverse_trans.at(c);
+                for (StateID s : current_set) {
+                    if (char_trans.contains(s)) {
+                        const auto& sources = char_trans.at(s);
+                        next_set.insert(sources.begin(), sources.end());
+                    }
+                }
+            }
+
+            if (next_set.empty())
+                continue;
+
+            if (!state_map.contains(next_set)) {
+                const auto new_id = reversed_dfa.create_state();
+                state_map[next_set] = new_id;
+                processing_queue.push(next_set);
+                if (next_set.contains(automaton.start_state)) {
+                    reversed_dfa.set_accepting(new_id, true);
+                }
+            }
+
+            reversed_dfa.add_transition(current_id, c, state_map[next_set]);
+        }
+    }
+
+    return reversed_dfa;
 }
 
 }  // namespace nre::dfa
