@@ -3,7 +3,6 @@
 #include <cstddef>
 #include <queue>
 #include <ranges>
-#include <stdexcept>
 #include <variant>
 #include <vector>
 
@@ -24,11 +23,6 @@ using TransitionCondition =
 struct Transition {
     TransitionCondition condition;
     StateID target;
-};
-
-class BuildError : public std::runtime_error {
-public:
-    using BuildError::runtime_error::runtime_error;
 };
 
 class NFA {
