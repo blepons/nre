@@ -28,20 +28,30 @@ bool DFA::is_accepting(StateID state) const {
     return accept_states.contains(state);
 }
 
+namespace {
+
+void collect_alphabet(const DFA& dfa, std::unordered_set<char>& chars) {
+    for (const auto& state_transitions : dfa.states) {
+        for (auto [ch, _] : state_transitions) {
+            chars.insert(ch);
+        }
+    }
+}
+
+std::unordered_set<char> collect_alphabet(const DFA& dfa) {
+    std::unordered_set<char> chars;
+    collect_alphabet(dfa, chars);
+    return chars;
+}
+
+}  // namespace
+
 DFA intersect(const DFA& a, const DFA& b) {
     DFA product;
 
     std::unordered_set<char> combined_alphabet;
-    for (const auto& state : a.states) {
-        for (const auto& [c, _] : state) {
-            combined_alphabet.insert(c);
-        }
-    }
-    for (const auto& state : b.states) {
-        for (const auto& [c, _] : state) {
-            combined_alphabet.insert(c);
-        }
-    }
+    collect_alphabet(a, combined_alphabet);
+    collect_alphabet(b, combined_alphabet);
 
     const auto dead_state = product.create_state();
     for (char c : combined_alphabet) {
@@ -88,16 +98,6 @@ DFA intersect(const DFA& a, const DFA& b) {
 }
 
 namespace {
-
-std::unordered_set<char> collect_alphabet(const DFA& dfa) {
-    std::unordered_set<char> chars;
-    for (const auto& state_transitions : dfa.states) {
-        for (auto [ch, _] : state_transitions) {
-            chars.insert(ch);
-        }
-    }
-    return chars;
-}
 
 DFA complete(const DFA& dfa, const auto& alphabet) {
     DFA complete = dfa;
