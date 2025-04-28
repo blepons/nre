@@ -17,4 +17,12 @@ bool DFAMatcher::is_match(std::string_view input) const {
     return dfa_.is_accepting(current);
 }
 
+DFA DFAMatcher::extract() && {
+    return std::move(dfa_);
+}
+
+void DFAMatcher::replace(DFA&& dfa) {
+    dfa_ = std::move(dfa);
+}
+
 }  // namespace nre::dfa

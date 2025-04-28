@@ -207,4 +207,12 @@ std::optional<Captures> NFAMatcher::captures(std::string_view input) const {
     return Captures(std::move(captures));
 }
 
+NFA NFAMatcher::extract() && {
+    return std::move(nfa_);
+}
+
+void NFAMatcher::replace(NFA&& nfa) {
+    nfa_ = std::move(nfa);
+}
+
 }  // namespace nre::nfa

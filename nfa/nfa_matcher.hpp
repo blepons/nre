@@ -30,6 +30,10 @@ public:
     bool is_match(std::string_view input) const;
     std::optional<Captures> captures(std::string_view input) const;
 
+    NFA extract() &&;
+
+    void replace(NFA&& nfa);
+
 private:
     NFA nfa_;
 };

@@ -11,6 +11,10 @@ public:
 
     bool is_match(std::string_view input) const;
 
+    DFA extract() &&;
+
+    void replace(DFA&& dfa);
+
 private:
     DFA dfa_;
 };
