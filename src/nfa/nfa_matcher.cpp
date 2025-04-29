@@ -9,7 +9,10 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "from_postfix.hpp"
 #include "nfa.hpp"
+#include "shunting_yard.hpp"
+#include "tokenize.hpp"
 
 namespace nre::nfa {
 
@@ -27,6 +30,9 @@ Captures::const_iterator Captures::begin() const {
 Captures::const_iterator Captures::end() const {
     return captures_.cend();
 }
+
+NFAMatcher::NFAMatcher(std::string_view regex)
+    : nfa_(from_postfix(shunting_yard(tokenize(regex)))) {}
 
 NFAMatcher::NFAMatcher(NFA&& nfa) : nfa_(std::move(nfa)) {}
 

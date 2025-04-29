@@ -1,6 +1,14 @@
 #include "dfa_matcher.hpp"
+#include "from_nfa.hpp"
+#include "from_postfix.hpp"
+#include "shunting_yard.hpp"
+#include "tokenize.hpp"
 
 namespace nre::dfa {
+
+DFAMatcher::DFAMatcher(std::string_view regex)
+    : dfa_(minimize(
+          (from_nfa(nfa::from_postfix(shunting_yard(tokenize(regex))))))) {}
 
 DFAMatcher::DFAMatcher(DFA&& dfa) : dfa_(std::move(dfa)) {}
 

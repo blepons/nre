@@ -25,7 +25,9 @@ private:
 
 class NFAMatcher {
 public:
-    NFAMatcher(NFA&& nfa);
+    explicit NFAMatcher(std::string_view regex);
+
+    explicit NFAMatcher(NFA&& nfa);
 
     bool is_match(std::string_view str) const;
     std::optional<Captures> captures(std::string_view str) const;

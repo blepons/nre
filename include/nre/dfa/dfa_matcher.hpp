@@ -7,7 +7,9 @@ namespace nre::dfa {
 
 class DFAMatcher {
 public:
-    DFAMatcher(DFA&& dfa);
+    explicit DFAMatcher(std::string_view regex);
+
+    explicit DFAMatcher(DFA&& dfa);
 
     bool is_match(std::string_view str) const;
 
