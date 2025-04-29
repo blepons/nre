@@ -1,7 +1,7 @@
 #pragma once
 
 #include <generator>
-#include "token/token.hpp"
+#include "token.hpp"
 
 namespace nre {
 

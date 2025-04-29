@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string_view>
-#include "dfa/dfa.hpp"
+#include "dfa.hpp"
 
 namespace nre::dfa {
 

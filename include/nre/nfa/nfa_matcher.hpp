@@ -3,7 +3,7 @@
 #include <optional>
 #include <string_view>
 #include <vector>
-#include "nfa/nfa.hpp"
+#include "nfa.hpp"
 
 namespace nre::nfa {
 

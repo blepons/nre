@@ -2,8 +2,8 @@
 
 #include <stdexcept>
 #include <vector>
-#include "nfa/nfa.hpp"
-#include "token/token.hpp"
+#include "nfa.hpp"
+#include "token.hpp"
 
 namespace nre::nfa {
 

@@ -9,7 +9,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include "nfa/nfa.hpp"
+#include "nfa.hpp"
 
 namespace nre::nfa {
 

@@ -2,7 +2,7 @@
 
 #include <stack>
 #include <vector>
-#include "token/token.hpp"
+#include "token.hpp"
 
 namespace nre {
 

@@ -1,7 +1,7 @@
 #include "from_postfix.hpp"
 #include <stack>
 #include <unordered_map>
-#include "nfa/nfa.hpp"
+#include "nfa.hpp"
 
 namespace nre::nfa {
 
