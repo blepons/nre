@@ -6,7 +6,7 @@
 #include <unordered_set>
 #include <variant>
 
-namespace nre {
+namespace nre::token {
 
 struct Literal {
     char value;
@@ -52,4 +52,4 @@ public:
     using std::runtime_error::runtime_error;
 };
 
-}  // namespace nre
+}  // namespace nre::token

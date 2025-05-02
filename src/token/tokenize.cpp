@@ -9,7 +9,7 @@
 #include <system_error>
 #include <utility>
 
-namespace nre {
+namespace nre::token {
 
 namespace {
 
@@ -200,4 +200,4 @@ std::generator<Token> tokenize(std::string_view regex) {
     }
 }
 
-}  // namespace nre
+}  // namespace nre::token

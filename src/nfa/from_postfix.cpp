@@ -17,7 +17,7 @@ constexpr bool always_false = false;
 
 void handle_literal(NFA& nfa,
                     std::stack<Fragment>& frag_stack,
-                    const Literal& tok) {
+                    const token::Literal& tok) {
     const auto start = nfa.create_state();
     const auto end = nfa.create_state();
     nfa.add_transition(start, tok.value, end);
@@ -33,7 +33,7 @@ void handle_empty_string(NFA& nfa, std::stack<Fragment>& frag_stack) {
 
 void handle_character_class(NFA& nfa,
                             std::stack<Fragment>& frag_stack,
-                            const CharacterClass& tok) {
+                            const token::CharacterClass& tok) {
     const auto start = nfa.create_state();
     const auto end = nfa.create_state();
     for (char ch : tok.chars) {
@@ -153,7 +153,7 @@ Fragment clone_fragment(NFA& nfa, const Fragment& original) {
 
 void handle_repetition_range(NFA& nfa,
                              std::stack<Fragment>& frag_stack,
-                             const RepetitionRange& tok) {
+                             const token::RepetitionRange& tok) {
     if (frag_stack.empty()) {
         throw BuildError("Missing operand for repetition range");
     }
@@ -210,7 +210,7 @@ void handle_lookahead(NFA& nfa, std::stack<Fragment>& frag_stack) {
 
 void handle_group(NFA& nfa,
                   std::stack<Fragment>& frag_stack,
-                  const Group& group) {
+                  const token::Group& group) {
     if (frag_stack.empty()) {
         throw BuildError("Empty group fragment");
     }
@@ -229,7 +229,7 @@ void handle_group(NFA& nfa,
 
 }  // namespace
 
-NFA from_postfix(const std::vector<Token>& postfix) {
+NFA from_postfix(const std::vector<token::Token>& postfix) {
     NFA nfa;
     std::stack<Fragment> frag_stack;
 
@@ -238,28 +238,30 @@ NFA from_postfix(const std::vector<Token>& postfix) {
             [&](auto&& tok) {
                 using T = std::decay_t<decltype(tok)>;
 
-                if constexpr (std::is_same_v<T, Literal>) {
+                if constexpr (std::is_same_v<T, token::Literal>) {
                     handle_literal(nfa, frag_stack, tok);
-                } else if constexpr (std::is_same_v<T, EmptyString>) {
+                } else if constexpr (std::is_same_v<T, token::EmptyString>) {
                     handle_empty_string(nfa, frag_stack);
-                } else if constexpr (std::is_same_v<T, Concatenation>) {
+                } else if constexpr (std::is_same_v<T, token::Concatenation>) {
                     handle_concatenation(nfa, frag_stack);
-                } else if constexpr (std::is_same_v<T, Alternation>) {
+                } else if constexpr (std::is_same_v<T, token::Alternation>) {
                     handle_alternation(nfa, frag_stack);
-                } else if constexpr (std::is_same_v<T, KleeneStar>) {
+                } else if constexpr (std::is_same_v<T, token::KleeneStar>) {
                     handle_kleene_star(nfa, frag_stack);
-                } else if constexpr (std::is_same_v<T, PositiveClosure>) {
+                } else if constexpr (std::is_same_v<T,
+                                                    token::PositiveClosure>) {
                     handle_positive_closure(nfa, frag_stack);
-                } else if constexpr (std::is_same_v<T, CharacterClass>) {
+                } else if constexpr (std::is_same_v<T, token::CharacterClass>) {
                     handle_character_class(nfa, frag_stack, tok);
-                } else if constexpr (std::is_same_v<T, RepetitionRange>) {
+                } else if constexpr (std::is_same_v<T,
+                                                    token::RepetitionRange>) {
                     handle_repetition_range(nfa, frag_stack, tok);
-                } else if constexpr (std::is_same_v<T, Lookahead>) {
+                } else if constexpr (std::is_same_v<T, token::Lookahead>) {
                     handle_lookahead(nfa, frag_stack);
-                } else if constexpr (std::is_same_v<T, Group>) {
+                } else if constexpr (std::is_same_v<T, token::Group>) {
                     handle_group(nfa, frag_stack, tok);
-                } else if constexpr (std::is_same_v<T, GroupOpen> ||
-                                     std::is_same_v<T, GroupClose>) {
+                } else if constexpr (std::is_same_v<T, token::GroupOpen> ||
+                                     std::is_same_v<T, token::GroupClose>) {
                     throw BuildError(
                         "Unexpected grouping operator in postfix notation");
                 } else {

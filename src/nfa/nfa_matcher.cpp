@@ -32,7 +32,7 @@ Captures::const_iterator Captures::end() const {
 }
 
 NFAMatcher::NFAMatcher(std::string_view regex)
-    : nfa_(from_postfix(shunting_yard(tokenize(regex)))) {}
+    : nfa_(from_postfix(token::shunting_yard(token::tokenize(regex)))) {}
 
 NFAMatcher::NFAMatcher(NFA&& nfa) : nfa_(std::move(nfa)) {}
 

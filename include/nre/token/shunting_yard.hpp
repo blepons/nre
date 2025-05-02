@@ -4,7 +4,7 @@
 #include <vector>
 #include "token.hpp"
 
-namespace nre {
+namespace nre::token {
 
 namespace detail {
 
@@ -144,4 +144,4 @@ std::vector<Token> shunting_yard(R&& tokens) {
     return output;
 }
 
-}  // namespace nre
+}  // namespace nre::token

@@ -12,6 +12,6 @@ public:
     using BuildError::runtime_error::runtime_error;
 };
 
-NFA from_postfix(const std::vector<Token>& tokens);
+NFA from_postfix(const std::vector<token::Token>& tokens);
 
 }  // namespace nre::nfa
