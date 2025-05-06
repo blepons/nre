@@ -43,7 +43,7 @@ std::unordered_set<StateID> epsilon_closure_with_lookahead(
     std::unordered_set<StateID>&& states,
     std::string_view str);
 
-static constexpr std::size_t match_npos = -1;
+constexpr std::size_t match_npos = -1;
 
 template <bool LazyMatching = false>
 std::size_t match_string(const NFA& nfa,
