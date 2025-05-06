@@ -28,7 +28,7 @@ DFA from_nfa(const nfa::NFA& nfa) {
     std::map<std::set<nfa::StateID>, StateID> state_map;
     std::vector<std::set<nfa::StateID>> state_sets;
 
-    auto initial_states = nfa::epsilon_closure<std::set>(
+    auto initial_states = nfa::epsilon_closure<std::set, true>(
         nfa, std::views::single(nfa.start_state));
 
     const auto initial_id = dfa.create_state();
@@ -61,7 +61,8 @@ DFA from_nfa(const nfa::NFA& nfa) {
                 }
             }
 
-            auto closure = nfa::epsilon_closure<std::set>(nfa, move_result);
+            auto closure =
+                nfa::epsilon_closure<std::set, true>(nfa, move_result);
             if (closure.empty()) {
                 continue;
             }

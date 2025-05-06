@@ -17,8 +17,12 @@ struct GroupStart {
 struct GroupEnd {
     int group_id;
 };
+struct Lookahead {
+    StateID start;
+    StateID end;
+};
 using TransitionCondition =
-    std::variant<EpsilonTransition, char, GroupStart, GroupEnd>;
+    std::variant<EpsilonTransition, char, GroupStart, GroupEnd, Lookahead>;
 
 struct Transition {
     TransitionCondition condition;
@@ -37,7 +41,9 @@ public:
     StateID accept_state = 0;
 };
 
-template <template <class...> class Set, std::ranges::input_range R>
+template <template <class...> class Set,
+          bool IgnoreLookaheadAssertion = false,
+          std::ranges::input_range R>
 Set<StateID> epsilon_closure(const NFA& nfa, R&& states) {
     Set<StateID> closure(std::ranges::begin(states), std::ranges::end(states));
     std::queue<StateID> processing_queue(closure.begin(), closure.end());
@@ -49,7 +55,9 @@ Set<StateID> epsilon_closure(const NFA& nfa, R&& states) {
         for (const auto& trans : nfa.states[current]) {
             if (std::holds_alternative<EpsilonTransition>(trans.condition) ||
                 std::holds_alternative<GroupStart>(trans.condition) ||
-                std::holds_alternative<GroupEnd>(trans.condition)) {
+                std::holds_alternative<GroupEnd>(trans.condition) ||
+                (IgnoreLookaheadAssertion &&
+                 std::holds_alternative<Lookahead>(trans.condition))) {
                 if (!closure.contains(trans.target)) {
                     closure.insert(trans.target);
                     processing_queue.push(trans.target);

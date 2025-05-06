@@ -36,15 +36,34 @@ NFAMatcher::NFAMatcher(std::string_view regex)
 
 NFAMatcher::NFAMatcher(NFA&& nfa) : nfa_(std::move(nfa)) {}
 
-bool NFAMatcher::is_match(std::string_view str) const {
-    auto current = epsilon_closure<std::unordered_set>(
-        nfa_, std::views::single(nfa_.start_state));
+namespace {
 
-    for (char c : str) {
+std::unordered_set<StateID> epsilon_closure_with_lookahead(
+    const NFA& nfa,
+    std::unordered_set<StateID>&& states,
+    std::string_view str);
+
+static constexpr std::size_t match_npos = -1;
+
+template <bool LazyMatching = false>
+std::size_t match_string(const NFA& nfa,
+                         StateID start,
+                         StateID end,
+                         std::string_view str) {
+    auto matched = match_npos;
+    auto current = epsilon_closure_with_lookahead(nfa, {start}, str);
+    if (current.contains(end)) {
+        matched = 0;
+        if constexpr (LazyMatching) {
+            return matched;
+        }
+    }
+
+    for (auto [pos, c] : std::views::enumerate(str)) {
         std::unordered_set<StateID> next_states;
 
         for (auto state : current) {
-            for (const auto& trans : nfa_.states[state]) {
+            for (const auto& trans : nfa.states[state]) {
                 if (const auto* ch = std::get_if<char>(&trans.condition)) {
                     if (*ch == c) {
                         next_states.insert(trans.target);
@@ -54,13 +73,67 @@ bool NFAMatcher::is_match(std::string_view str) const {
         }
 
         if (next_states.empty()) {
-            return false;
+            return matched;
         }
-        current =
-            epsilon_closure<std::unordered_set>(nfa_, std::move(next_states));
+
+        current = epsilon_closure_with_lookahead(nfa, std::move(next_states),
+                                                 str.substr(pos + 1));
+        if (current.contains(end)) {
+            matched = pos + 1;
+            if constexpr (LazyMatching) {
+                return matched;
+            }
+        }
     }
 
-    return current.contains(nfa_.accept_state);
+    return matched;
+}
+
+std::unordered_set<StateID> epsilon_closure_with_lookahead(
+    const NFA& nfa,
+    std::unordered_set<StateID>&& states,
+    std::string_view str) {
+    std::unordered_set<StateID> closure(std::move(states));
+    std::queue<StateID> processing_queue(closure.begin(), closure.end());
+
+    while (!processing_queue.empty()) {
+        StateID current = processing_queue.front();
+        processing_queue.pop();
+
+        for (const auto& trans : nfa.states[current]) {
+            std::visit(
+                [&](auto&& condition) {
+                    using T = std::decay_t<decltype(condition)>;
+                    if constexpr (std::is_same_v<T, GroupStart> ||
+                                  std::is_same_v<T, GroupEnd> ||
+                                  std::is_same_v<T, EpsilonTransition>) {
+                        if (!closure.contains(trans.target)) {
+                            closure.insert(trans.target);
+                            processing_queue.push(trans.target);
+                        }
+                    } else if constexpr (std::is_same_v<T, Lookahead>) {
+                        if (match_string<true>(nfa, condition.start,
+                                               condition.end,
+                                               str) != match_npos) {
+                            if (!closure.contains(trans.target)) {
+                                closure.insert(trans.target);
+                                processing_queue.push(trans.target);
+                            }
+                        }
+                    }
+                },
+                trans.condition);
+        }
+    }
+
+    return closure;
+}
+
+}  // namespace
+
+bool NFAMatcher::is_match(std::string_view str) const {
+    return match_string(nfa_, nfa_.start_state, nfa_.accept_state, str) ==
+           str.length();
 }
 
 namespace {
@@ -107,7 +180,8 @@ std::unordered_set<SimulationState, SimulationStateHash>
 epsilon_closure_with_groups(
     const NFA& nfa,
     std::unordered_set<SimulationState, SimulationStateHash>&& states,
-    std::size_t current_pos) {
+    std::size_t current_pos,
+    std::string_view str) {
     std::unordered_set<SimulationState, SimulationStateHash> closure =
         std::move(states);
     std::queue<SimulationState> processing_queue(closure.begin(),
@@ -123,9 +197,10 @@ epsilon_closure_with_groups(
 
             SimulationState new_state = current;
             new_state.id = trans.target;
+            bool transition_valid = true;
 
             std::visit(
-                [&new_state, current_pos](auto&& condition) {
+                [&](auto&& condition) {
                     using T = std::decay_t<decltype(condition)>;
                     if constexpr (std::is_same_v<T, GroupStart>) {
                         new_state.active_groups[condition.group_id] =
@@ -138,13 +213,19 @@ epsilon_closure_with_groups(
                                 it->second, current_pos - 1};
                             new_state.active_groups.erase(it);
                         }
+                    } else if constexpr (std::is_same_v<T, Lookahead>) {
+                        if (match_string<true>(
+                                nfa, condition.start, condition.end,
+                                str.substr(current_pos)) == match_npos) {
+                            transition_valid = false;
+                        }
                     }
                 },
                 trans.condition);
 
-            if (!closure.contains(new_state)) {
+            if (transition_valid && !closure.contains(new_state)) {
                 closure.insert(new_state);
-                processing_queue.push(std::move(new_state));
+                processing_queue.push(new_state);
             }
         }
     }
@@ -154,11 +235,12 @@ epsilon_closure_with_groups(
 
 }  // namespace
 
+// BUG: group indices are not correct if nfa has lookaheads
 std::optional<Captures> NFAMatcher::captures(std::string_view str) const {
     std::unordered_set<SimulationState, SimulationStateHash> current_states{
         SimulationState{nfa_.start_state, {}, {}}};
     current_states =
-        epsilon_closure_with_groups(nfa_, std::move(current_states), 0);
+        epsilon_closure_with_groups(nfa_, std::move(current_states), 0, str);
 
     for (auto [pos, c] : std::views::enumerate(str)) {
         std::unordered_set<SimulationState, SimulationStateHash> next_states;
@@ -179,8 +261,8 @@ std::optional<Captures> NFAMatcher::captures(std::string_view str) const {
             return std::nullopt;
         }
 
-        current_states =
-            epsilon_closure_with_groups(nfa_, std::move(next_states), pos + 1);
+        current_states = epsilon_closure_with_groups(
+            nfa_, std::move(next_states), pos + 1, str);
     }
 
     const SimulationState* best = nullptr;

@@ -205,7 +205,18 @@ void handle_repetition_range(NFA& nfa,
 }
 
 void handle_lookahead(NFA& nfa, std::stack<Fragment>& frag_stack) {
-    throw BuildError("Lookahead operator not implemented");
+    if (frag_stack.size() < 2) {
+        throw BuildError("Insufficient operands for lookahead");
+    }
+
+    Fragment rhs = frag_stack.top();
+    frag_stack.pop();
+    Fragment lhs = frag_stack.top();
+    frag_stack.pop();
+
+    StateID new_start = nfa.create_state();
+    nfa.add_transition(new_start, Lookahead{lhs.start, lhs.end}, rhs.start);
+    frag_stack.push(Fragment{new_start, rhs.end});
 }
 
 void handle_group(NFA& nfa,
