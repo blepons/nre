@@ -129,6 +129,10 @@ std::generator<Token> tokenize(std::string_view regex) {
     std::size_t pos = 0;
     int group_counter = 0;
     std::stack<int> group_stack;
+    if (regex.empty()) {
+        co_yield EmptyString{};
+        co_return;
+    }
     while (pos < regex.size()) {
         const char c = regex[pos];
         switch (c) {
