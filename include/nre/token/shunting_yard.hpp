@@ -58,7 +58,7 @@ inline bool can_start_expr(const Token& token) {
 }  // namespace detail
 
 template <std::ranges::input_range R>
-std::vector<Token> shunting_yard(R&& tokens) {
+std::vector<Token> shunting_yard(R&& tokens, bool no_groups) {
     using namespace detail;
     std::vector<Token> output;
     std::stack<Token> op_stack;
@@ -100,10 +100,11 @@ std::vector<Token> shunting_yard(R&& tokens) {
             group_stack.pop();
 
             if (output.size() == start_index) {
-                output.insert(output.begin() + start_index, EmptyString{});
+                output.push_back(EmptyString{});
             }
-
-            output.emplace_back(Group{group_close.group_id});
+            if (!no_groups) {
+                output.push_back(Group{group_close.group_id});
+            }
             prev_was_operand = true;
         } else if (is_operator(token)) {
             if (is_binary_operator(token) && !prev_was_operand) {

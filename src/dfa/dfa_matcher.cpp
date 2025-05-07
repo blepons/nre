@@ -7,8 +7,8 @@
 namespace nre::dfa {
 
 DFAMatcher::DFAMatcher(std::string_view regex)
-    : dfa_(minimize(from_nfa(
-          nfa::from_postfix(token::shunting_yard(token::tokenize(regex)))))) {}
+    : dfa_(minimize(from_nfa(nfa::from_postfix(
+          token::shunting_yard(token::tokenize(regex), true))))) {}
 
 DFAMatcher::DFAMatcher(DFA&& dfa) : dfa_(std::move(dfa)) {}
 
