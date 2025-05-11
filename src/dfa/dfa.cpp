@@ -3,9 +3,10 @@
 #include <map>
 #include <queue>
 #include <ranges>
-#include <set>
 #include <unordered_set>
 #include <utility>
+#include "from_nfa.hpp"
+#include "nfa.hpp"
 
 namespace nre::dfa {
 
@@ -235,74 +236,24 @@ DFA minimize(const DFA& automaton) {
 }
 
 DFA reverse(const DFA& automaton) {
-    DFA reversed_dfa;
+    nfa::NFA reversed_nfa;
+    const auto new_start = reversed_nfa.create_state();
+    for (std::size_t i = 0; i < automaton.states.size(); ++i) {
+        reversed_nfa.create_state();
+    }
 
-    std::unordered_map<char, std::unordered_map<StateID, std::set<StateID>>>
-        reverse_trans;
-    for (auto [q, transitions] : std::views::enumerate(automaton.states)) {
-        for (const auto& [ch, state] : transitions) {
-            reverse_trans[ch][state].insert(q);
+    for (StateID s : automaton.accept_states) {
+        reversed_nfa.add_transition(new_start, nfa::EpsilonTransition{}, s + 1);
+    }
+    for (auto [from, transitions] : std::views::enumerate(automaton.states)) {
+        for (const auto& [c, to] : transitions) {
+            reversed_nfa.add_transition(to + 1, c, from + 1);
         }
     }
 
-    auto alphabet = collect_alphabet(automaton);
+    reversed_nfa.accept_state = automaton.start_state + 1;
 
-    std::set<StateID> initial_state(automaton.accept_states.begin(),
-                                    automaton.accept_states.end());
-
-    if (initial_state.empty()) {
-        reversed_dfa.create_state();
-        reversed_dfa.start_state = 0;
-        return reversed_dfa;
-    }
-
-    std::map<std::set<StateID>, StateID> state_map;
-    std::queue<std::set<StateID>> processing_queue;
-
-    const auto initial_id = reversed_dfa.create_state();
-    state_map[initial_state] = initial_id;
-    reversed_dfa.start_state = initial_id;
-    processing_queue.push(initial_state);
-
-    if (initial_state.contains(automaton.start_state)) {
-        reversed_dfa.set_accepting(initial_id, true);
-    }
-
-    while (!processing_queue.empty()) {
-        auto current_set = std::move(processing_queue.front());
-        processing_queue.pop();
-        const StateID current_id = state_map[current_set];
-
-        for (char c : alphabet) {
-            std::set<StateID> next_set;
-
-            if (reverse_trans.contains(c)) {
-                const auto& char_trans = reverse_trans.at(c);
-                for (StateID s : current_set) {
-                    if (char_trans.contains(s)) {
-                        const auto& sources = char_trans.at(s);
-                        next_set.insert(sources.begin(), sources.end());
-                    }
-                }
-            }
-
-            if (next_set.empty())
-                continue;
-
-            if (!state_map.contains(next_set)) {
-                const auto new_id = reversed_dfa.create_state();
-                state_map[next_set] = new_id;
-                processing_queue.push(next_set);
-                if (next_set.contains(automaton.start_state)) {
-                    reversed_dfa.set_accepting(new_id, true);
-                }
-            }
-
-            reversed_dfa.add_transition(current_id, c, state_map[next_set]);
-        }
-    }
-
-    return reversed_dfa;
+    return from_nfa(reversed_nfa);
 }
 
 }  // namespace nre::dfa
