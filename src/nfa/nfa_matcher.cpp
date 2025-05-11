@@ -235,7 +235,6 @@ epsilon_closure_with_groups(
 
 }  // namespace
 
-// BUG: group indices are not correct if nfa has lookaheads
 std::optional<Captures> NFAMatcher::captures(std::string_view str) const {
     std::unordered_set<SimulationState, SimulationStateHash> current_states{
         SimulationState{nfa_.start_state, {}, {}}};

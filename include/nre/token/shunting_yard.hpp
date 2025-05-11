@@ -1,6 +1,9 @@
 #pragma once
 
+#include <ranges>
 #include <stack>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "token.hpp"
 
@@ -55,6 +58,46 @@ inline bool can_start_expr(const Token& token) {
     return holds_any_of<Literal, EmptyString, CharacterClass, GroupOpen>(token);
 }
 
+inline void remove_lookahead_groups(
+    std::vector<Token>& tokens,
+    const std::vector<int>& closed_groups,
+    const std::vector<std::size_t>& lookahead_positions) {
+    std::unordered_set<int> suppressed_groups;
+    for (std::size_t pos : lookahead_positions) {
+        for (std::size_t i = 0; i < pos; ++i) {
+            suppressed_groups.insert(closed_groups[i]);
+        }
+    }
+
+    std::erase_if(tokens, [&suppressed_groups](const Token& tok) {
+        if (const Group* g = std::get_if<Group>(&tok)) {
+            return suppressed_groups.count(g->group_id) > 0;
+        }
+        return false;
+    });
+
+    std::vector<int> remaining_groups;
+    for (int id : closed_groups) {
+        if (!suppressed_groups.contains(id)) {
+            remaining_groups.push_back(id);
+        }
+    }
+
+    std::unordered_map<int, int> group_id_map;
+    for (auto [idx, group_id] : std::views::enumerate(remaining_groups)) {
+        group_id_map[group_id] = static_cast<int>(idx + 1);
+    }
+
+    for (Token& tok : tokens) {
+        if (Group* g = std::get_if<Group>(&tok)) {
+            auto it = group_id_map.find(g->group_id);
+            if (it != group_id_map.end()) {
+                g->group_id = it->second;
+            }
+        }
+    }
+}
+
 }  // namespace detail
 
 template <std::ranges::input_range R>
@@ -64,6 +107,8 @@ std::vector<Token> shunting_yard(R&& tokens, bool no_groups) {
     std::stack<Token> op_stack;
     bool prev_was_operand = false;
     std::stack<std::pair<int, std::size_t>> group_stack;
+    std::vector<int> closed_groups;
+    std::vector<std::size_t> lookahead_positions;
 
     for (auto&& token : tokens) {
         if (prev_was_operand && can_start_expr(token)) {
@@ -104,6 +149,7 @@ std::vector<Token> shunting_yard(R&& tokens, bool no_groups) {
             }
             if (!no_groups) {
                 output.push_back(Group{group_close.group_id});
+                closed_groups.push_back(group_close.group_id);
             }
             prev_was_operand = true;
         } else if (is_operator(token)) {
@@ -127,6 +173,11 @@ std::vector<Token> shunting_yard(R&& tokens, bool no_groups) {
             }
 
             op_stack.push(std::move(token));
+
+            if (std::holds_alternative<Lookahead>(op_stack.top())) {
+                lookahead_positions.push_back(closed_groups.size());
+            }
+
             prev_was_operand = is_unary_operator(token);
         } else {
             output.push_back(std::move(token));
@@ -141,6 +192,8 @@ std::vector<Token> shunting_yard(R&& tokens, bool no_groups) {
         output.push_back(std::move(op_stack.top()));
         op_stack.pop();
     }
+
+    remove_lookahead_groups(output, closed_groups, lookahead_positions);
 
     return output;
 }
