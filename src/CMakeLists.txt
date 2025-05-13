@@ -38,3 +38,12 @@ target_sources(nre
             ${CMAKE_CURRENT_LIST_DIR}/../include/nre/dfa/from_nfa.hpp
 )
 
+target_sources(nre
+    PRIVATE
+        ${CMAKE_CURRENT_LIST_DIR}/regex/regex.cpp
+    PUBLIC
+        FILE_SET HEADERS
+        BASE_DIRS ${CMAKE_CURRENT_LIST_DIR}/../include/nre/regex/
+        FILES
+            ${CMAKE_CURRENT_LIST_DIR}/../include/nre/regex/regex.hpp
+)
