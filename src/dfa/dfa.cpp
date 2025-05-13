@@ -1,8 +1,11 @@
 #include "dfa.hpp"
 #include <algorithm>
+#include <format>
 #include <map>
+#include <optional>
 #include <queue>
 #include <ranges>
+#include <string_view>
 #include <unordered_set>
 #include <utility>
 #include "from_nfa.hpp"
@@ -254,6 +257,175 @@ DFA reverse(const DFA& automaton) {
     reversed_nfa.accept_state = automaton.start_state + 1;
 
     return from_nfa(reversed_nfa);
+}
+
+namespace {
+
+bool needs_parentheses(std::string_view r) {
+    if (r == "[]" || r == "$") {
+        return false;
+    }
+    if (r.size() == 1) {
+        return false;
+    }
+    return true;
+}
+
+std::string parenthesize_regex(std::string_view r) {
+    return needs_parentheses(r) ? std::format("({})", r) : std::string{r};
+}
+
+std::string concat_regex(std::string_view a, std::string_view b) {
+    if (a == "[]" || b == "[]") {
+        return "[]";
+    }
+    if (a == "$") {
+        return std::string{b};
+    }
+    if (b == "$") {
+        return std::string{a};
+    }
+    return parenthesize_regex(a) + parenthesize_regex(b);
+}
+
+std::string star_regex(std::string_view a) {
+    if (a == "[]") {
+        return "$";
+    }
+    if (a == "$") {
+        return "$";
+    }
+    return std::format("{}*", parenthesize_regex(a));
+}
+
+std::string union_regex(std::string_view a, std::string_view b) {
+    if (a == "[]") {
+        return std::string{b};
+    }
+    if (b == "[]") {
+        return std::string{a};
+    }
+    if (a == b) {
+        return std::string{a};
+    }
+    return std::format("{}|{}", parenthesize_regex(a), parenthesize_regex(b));
+}
+
+template <typename T, typename K>
+std::optional<typename std::remove_cvref_t<T>::mapped_type> try_get(T&& map,
+                                                                    K&& key) {
+    auto it = map.find(std::forward<K>(key));
+    if (it == map.end()) {
+        return std::nullopt;
+    }
+    return it->second;
+}
+
+using Transitions = std::vector<std::unordered_map<StateID, std::string>>;
+
+Transitions build_base_transitions(const DFA& automaton) {
+    Transitions transitions(automaton.states.size() + 2);
+    for (auto [from, state_trans] : std::views::enumerate(automaton.states)) {
+        for (const auto& [c, to] : state_trans) {
+            std::string ch_str(1, c);
+            if (transitions[from].contains(to)) {
+                transitions[from][to] =
+                    union_regex(transitions[from][to], ch_str);
+            } else {
+                transitions[from][to] = ch_str;
+            }
+        }
+    }
+    return transitions;
+}
+
+void add_start_and_accept_transitions(Transitions& transitions,
+                                      const DFA& automaton,
+                                      StateID s_id,
+                                      StateID a_id) {
+    transitions[s_id][automaton.start_state] = "$";
+    for (StateID accept_state : automaton.accept_states) {
+        transitions[accept_state][a_id] = "$";
+    }
+}
+
+std::unordered_map<StateID, std::string> incoming_transitions(
+    const Transitions& transitions,
+    StateID k) {
+    std::unordered_map<StateID, std::string> R_ik;
+    for (StateID i = 0; i < transitions.size(); ++i) {
+        if (i == k) {
+            continue;
+        }
+        R_ik[i] = try_get(transitions[i], k).value_or("[]");
+    }
+    return R_ik;
+}
+
+std::unordered_map<StateID, std::string> outgoing_ransitions(
+    const Transitions& transitions,
+    StateID k) {
+    std::unordered_map<StateID, std::string> R_kj;
+    const auto& k_trans = transitions[k];
+    for (StateID j = 0; j < transitions.size(); ++j) {
+        if (j == k) {
+            continue;
+        }
+        R_kj[j] = try_get(k_trans, j).value_or("[]");
+    }
+    return R_kj;
+}
+
+void update_transition_pairs(
+    Transitions& transitions,
+    const std::unordered_map<StateID, std::string>& R_ik,
+    const std::unordered_map<StateID, std::string>& R_kj,
+    std::string_view R_kk_star) {
+    for (const auto& [i, rik] : R_ik) {
+        for (const auto& [j, rkj] : R_kj) {
+            std::string term = concat_regex(rik, concat_regex(R_kk_star, rkj));
+            std::string current = try_get(transitions[i], j).value_or("[]");
+            std::string new_regex = union_regex(current, term);
+
+            if (new_regex != "[]") {
+                transitions[i][j] = new_regex;
+            } else {
+                transitions[i].erase(j);
+            }
+        }
+    }
+}
+
+void eliminate_state(Transitions& transitions, StateID k) {
+    auto R_ik = incoming_transitions(transitions, k);
+    auto R_kj = outgoing_ransitions(transitions, k);
+    std::string R_kk = try_get(transitions[k], k).value_or("[]");
+    std::string R_kk_star = star_regex(R_kk);
+
+    update_transition_pairs(transitions, R_ik, R_kj, R_kk_star);
+
+    for (auto& state_trans : transitions) {
+        state_trans.erase(k);
+    }
+}
+
+}  // namespace
+
+std::string to_regex(const DFA& automaton) {
+    if (automaton.states.size() == 0) {
+        return "[]";
+    }
+
+    const auto s_id = automaton.states.size();
+    const auto a_id = s_id + 1;
+    auto transitions = build_base_transitions(automaton);
+    add_start_and_accept_transitions(transitions, automaton, s_id, a_id);
+
+    for (StateID k = 0; k < automaton.states.size(); ++k) {
+        eliminate_state(transitions, k);
+    }
+
+    return try_get(transitions[s_id], a_id).value_or("[]");
 }
 
 }  // namespace nre::dfa

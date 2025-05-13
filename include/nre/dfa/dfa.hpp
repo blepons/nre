@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -29,8 +30,6 @@ DFA minimize(const DFA& automaton);
 
 DFA reverse(const DFA& automaton);
 
-// TODO: implement these functions:
-//
-// std::string to_regex(const DFA& automaton);
+std::string to_regex(const DFA& automaton);
 
 }  // namespace nre::dfa
