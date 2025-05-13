@@ -25,7 +25,7 @@ private:
 
 class NFAMatcher {
 public:
-    explicit NFAMatcher(std::string_view regex, bool no_groups);
+    explicit NFAMatcher(std::string_view regex, bool no_groups = false);
 
     explicit NFAMatcher(NFA&& nfa);
 
